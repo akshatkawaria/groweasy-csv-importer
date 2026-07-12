@@ -16,7 +16,7 @@ You will receive an array of raw CSV row objects. Each row may have different, i
 Your job: map each row into the following GrowEasy CRM schema, as accurately as possible.
 
 CRM FIELDS:
-- created_at: Lead creation date/time. Must be in a format parseable by JavaScript's "new Date(created_at)". If no date is present, leave blank.
+- created_at: Lead creation date/time. You MUST convert whatever date format is given (e.g. DD-MM-YYYY, DD/MM/YYYY, MM-DD-YYYY, etc.) into ISO 8601 format: "YYYY-MM-DDTHH:mm:ss" (e.g. "2026-05-13T14:20:00"). Assume DD-MM-YYYY for ambiguous dates unless context suggests otherwise (e.g. US-style sources). If no date is present or it cannot be confidently parsed, leave blank.
 - name: Lead's full name.
 - email: Primary email address.
 - country_code: Country code for mobile number (e.g. "+91"). Infer from context if possible, else leave blank.
