@@ -22,9 +22,11 @@ export const handleImport = async (req: Request, res: Response) => {
       const batch = batches[i];
       try {
         const extracted = await extractBatch(batch);
+        const returnedIndices = new Set(extracted.map((r: any) => r._rowIndex));
 
         extracted.forEach((rawRecord: any) => {
-          const record = validateRecord(rawRecord);
+          const { _rowIndex, ...recordWithoutIndex } = rawRecord;
+          const record = validateRecord(recordWithoutIndex);
           const hasEmail = record.email && record.email.trim() !== "";
           const hasMobile =
             record.mobile_without_country_code &&
@@ -34,20 +36,19 @@ export const handleImport = async (req: Request, res: Response) => {
           } else {
             skipped.push({
               reason: "No email or mobile number present",
-              originalRow: record,
+              originalRow: batch[_rowIndex] || record,
             });
           }
         });
 
-        const missingCount = batch.length - extracted.length;
-        if (missingCount > 0) {
-          for (let j = 0; j < missingCount; j++) {
+        batch.forEach((originalRow, idx) => {
+          if (!returnedIndices.has(idx)) {
             skipped.push({
               reason: "AI excluded this row (likely missing email/mobile)",
-              originalRow: null,
+              originalRow: originalRow,
             });
           }
-        }
+        });
       } catch (err) {
         console.error(`Batch ${i + 1} failed:`, err);
         batch.forEach((row) => {

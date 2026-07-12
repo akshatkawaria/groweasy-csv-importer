@@ -32,6 +32,8 @@ CRM FIELDS:
 - possession_time: Property possession time, if mentioned (real estate context).
 - description: Any additional descriptive info not captured elsewhere.
 
+0. Each input row includes a "_rowIndex" field. Your output for each row (whether mapped or explicitly noting it was skipped) must preserve this "_rowIndex" so we can track which original row it came from. Include "_rowIndex" as a field in every output object.
+
 RULES:
 1. If a row has MULTIPLE emails, use the first one as "email" and append the rest into "crm_note".
 2. If a row has MULTIPLE mobile numbers, use the first one as "mobile_without_country_code" and append the rest into "crm_note".
@@ -68,7 +70,8 @@ EXAMPLE OUTPUT:
 ]`;
 
 export async function extractBatch(rows: any[], retries = 2): Promise<any[]> {
-  const userPrompt = `Here are the CSV rows to map:\n${JSON.stringify(rows, null, 2)}`;
+  const indexedRows = rows.map((row, idx) => ({ ...row, _rowIndex: idx }));
+  const userPrompt = `Here are the CSV rows to map:\n${JSON.stringify(indexedRows, null, 2)}`;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
