@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { chunkArray } from "../utils/batching";
 import { extractBatch } from "../services/aiExtractor";
+import { validateRecord } from "../services/validator";
 import { CrmRecord } from "../types/crm";
 
 export const handleImport = async (req: Request, res: Response) => {
@@ -22,8 +23,8 @@ export const handleImport = async (req: Request, res: Response) => {
       try {
         const extracted = await extractBatch(batch);
 
-        // Track which extracted records have valid contact info
-        extracted.forEach((record: any) => {
+        extracted.forEach((rawRecord: any) => {
+          const record = validateRecord(rawRecord);
           const hasEmail = record.email && record.email.trim() !== "";
           const hasMobile =
             record.mobile_without_country_code &&
@@ -38,7 +39,6 @@ export const handleImport = async (req: Request, res: Response) => {
           }
         });
 
-        // If AI returned fewer records than input rows, account for the difference
         const missingCount = batch.length - extracted.length;
         if (missingCount > 0) {
           for (let j = 0; j < missingCount; j++) {
@@ -66,4 +66,4 @@ export const handleImport = async (req: Request, res: Response) => {
     console.error("Import error:", err);
     res.status(500).json({ error: "Internal server error during import." });
   }
-};  
+};
