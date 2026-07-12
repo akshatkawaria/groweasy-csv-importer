@@ -1,0 +1,85 @@
+import Groq from "groq-sdk";
+import { ALLOWED_CRM_STATUS, ALLOWED_DATA_SOURCE } from "../types/crm";
+
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "" });
+
+const SYSTEM_PROMPT = `You are a data extraction assistant for a CRM system called GrowEasy.
+
+You will receive an array of raw CSV row objects. Each row may have different, inconsistent, or ambiguous column names (e.g. "Ph No", "Contact Number", "Mobile", "E-mail", "Email Id", "Full Name", "Client Name").
+
+Your job: map each row into the following GrowEasy CRM schema, as accurately as possible.
+
+CRM FIELDS:
+- created_at: Lead creation date/time. Must be in a format parseable by JavaScript's "new Date(created_at)". If no date is present, leave blank.
+- name: Lead's full name.
+- email: Primary email address.
+- country_code: Country code for mobile number (e.g. "+91"). Infer from context if possible, else leave blank.
+- mobile_without_country_code: Mobile number WITHOUT the country code.
+- company: Company name, if present.
+- city: City.
+- state: State.
+- country: Country.
+- lead_owner: Person/agent who owns this lead (often an email or name).
+- crm_status: MUST be exactly one of: ${ALLOWED_CRM_STATUS.join(", ")}. If the row doesn't clearly indicate status, leave blank.
+- crm_note: Any remarks, notes, follow-up comments, extra phone numbers, extra emails, or other info that doesn't fit elsewhere.
+- data_source: MUST be exactly one of: ${ALLOWED_DATA_SOURCE.join(", ")}. If none match confidently, leave blank.
+- possession_time: Property possession time, if mentioned (real estate context).
+- description: Any additional descriptive info not captured elsewhere.
+
+RULES:
+1. If a row has MULTIPLE emails, use the first one as "email" and append the rest into "crm_note".
+2. If a row has MULTIPLE mobile numbers, use the first one as "mobile_without_country_code" and append the rest into "crm_note".
+3. If a row has NEITHER an email NOR a mobile number, SKIP that row entirely (do not include it in output).
+4. Never invent data that isn't present or reasonably inferable from the row.
+5. crm_status and data_source must ONLY use the exact allowed values listed above, or be left as an empty string "" if uncertain. Never invent new values.
+6. Output must be a JSON array of objects, one per valid row (skipped rows excluded).
+7. Respond with ONLY the JSON array. No markdown code fences, no explanation, no extra text before or after.
+
+EXAMPLE INPUT:
+[
+  { "Full Name": "Amit Kumar", "Ph No": "9876543210 / 9123456780", "Email Id": "amit@test.com", "City": "Pune", "Remarks": "Interested, call back tomorrow" }
+]
+
+EXAMPLE OUTPUT:
+[
+  {
+    "created_at": "",
+    "name": "Amit Kumar",
+    "email": "amit@test.com",
+    "country_code": "",
+    "mobile_without_country_code": "9876543210",
+    "company": "",
+    "city": "Pune",
+    "state": "",
+    "country": "",
+    "lead_owner": "",
+    "crm_status": "",
+    "crm_note": "Interested, call back tomorrow. Additional number: 9123456780",
+    "data_source": "",
+    "possession_time": "",
+    "description": ""
+  }
+]`;
+
+export async function extractBatch(rows: any[]): Promise<any[]> {
+  const userPrompt = `Here are the CSV rows to map:\n${JSON.stringify(rows, null, 2)}`;
+
+  const completion = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: userPrompt },
+    ],
+    temperature: 0.2,
+  });
+
+  const responseText = completion.choices[0]?.message?.content || "";
+  const cleaned = responseText.replace(/```json|```/g, "").trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (err) {
+    console.error("Failed to parse AI response as JSON:", cleaned);
+    throw new Error("AI returned invalid JSON");
+  }
+}
