@@ -1,85 +1,36 @@
-# GrowEasy CSV Importer
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-An AI-powered CSV importer that intelligently extracts CRM lead information from any CSV format — regardless of column names, layout, or structure.
+## Getting Started
 
-## Live Demo
-- **Frontend**: https://groweasy-csv-importer-lemon-phi.vercel.app
-- **Backend API**: https://groweasy-csv-importer-39en.onrender.com
+First, run the development server:
 
-> Note: Backend is on Render's free tier, which spins down after inactivity. The first request after idle time may take 30–50 seconds to respond.
-
-## Tech Stack
-- **Frontend**: Next.js, TypeScript, Tailwind CSS, react-dropzone, PapaParse
-- **Backend**: Node.js, Express, TypeScript
-- **AI**: Groq (Llama 3.3 70B) for intelligent field mapping
-
-## How It Works
-1. User uploads any CSV (different column names/layouts supported)
-2. Frontend parses and previews the raw data — no AI call yet
-3. On confirmation, rows are sent to the backend in batches
-4. Backend sends each batch to the AI with a detailed system prompt describing the CRM schema
-5. AI maps ambiguous columns (e.g. "Ph No", "Contact Number") to the correct CRM fields
-6. Backend validates AI output against allowed enum values before returning
-7. Records without email or mobile are automatically skipped
-8. Results (imported + skipped) are displayed with totals
-
-## Local Setup
-
-### Prerequisites
-- Node.js v18+
-- A Groq API key (free at https://console.groq.com/keys)
-
-### Backend
-```bash
-cd backend
-npm install
-```
-Create a `.env` file in `backend/`:
-```
-PORT=5000
-GROQ_API_KEY=your_groq_key_here
-```
 ```bash
 npm run dev
-```
-Backend runs on `http://localhost:5000`
-
-### Frontend
-```bash
-cd frontend
-npm install
-```
-Create a `.env.local` file in `frontend/`:
-```
-NEXT_PUBLIC_API_URL=http://localhost:5000
-```
-```bash
-npm run dev
-```
-Frontend runs on `http://localhost:3000`
-
-## API
-
-### `POST /api/import`
-**Request body:**
-```json
-{ "rows": [{ "any": "csv", "row": "data" }] }
-```
-**Response:**
-```json
-{
-  "imported": [...],
-  "skipped": [...],
-  "totalImported": 0,
-  "totalSkipped": 0
-}
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-## CRM Fields Extracted
-`created_at`, `name`, `email`, `country_code`, `mobile_without_country_code`, `company`, `city`, `state`, `country`, `lead_owner`, `crm_status`, `crm_note`, `data_source`, `possession_time`, `description`
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Design Notes
-- AI extraction uses a detailed system prompt with the full CRM schema, explicit enum constraints, and a worked example to guide accurate field mapping on messy/ambiguous columns.
-- Rows are processed in batches of 25 to stay within reasonable AI context sizes and improve reliability.
-- A validation layer checks AI-returned `crm_status` and `data_source` values against allowed enums, blanking out anything invalid rather than trusting AI output blindly.
-- Rows with neither an email nor a mobile number are excluded per the spec, with reasons tracked and shown in the UI.
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
