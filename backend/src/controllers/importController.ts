@@ -21,7 +21,33 @@ export const handleImport = async (req: Request, res: Response) => {
       const batch = batches[i];
       try {
         const extracted = await extractBatch(batch);
-        imported.push(...extracted);
+
+        // Track which extracted records have valid contact info
+        extracted.forEach((record: any) => {
+          const hasEmail = record.email && record.email.trim() !== "";
+          const hasMobile =
+            record.mobile_without_country_code &&
+            record.mobile_without_country_code.trim() !== "";
+          if (hasEmail || hasMobile) {
+            imported.push(record);
+          } else {
+            skipped.push({
+              reason: "No email or mobile number present",
+              originalRow: record,
+            });
+          }
+        });
+
+        // If AI returned fewer records than input rows, account for the difference
+        const missingCount = batch.length - extracted.length;
+        if (missingCount > 0) {
+          for (let j = 0; j < missingCount; j++) {
+            skipped.push({
+              reason: "AI excluded this row (likely missing email/mobile)",
+              originalRow: null,
+            });
+          }
+        }
       } catch (err) {
         console.error(`Batch ${i + 1} failed:`, err);
         batch.forEach((row) => {
