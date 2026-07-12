@@ -67,25 +67,36 @@ EXAMPLE OUTPUT:
   }
 ]`;
 
-export async function extractBatch(rows: any[]): Promise<any[]> {
+export async function extractBatch(rows: any[], retries = 2): Promise<any[]> {
   const userPrompt = `Here are the CSV rows to map:\n${JSON.stringify(rows, null, 2)}`;
 
-  const completion = await getGroqClient().chat.completions.create({
-    model: "llama-3.3-70b-versatile",
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: userPrompt },
-    ],
-    temperature: 0.2,
-  });
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const completion = await getGroqClient().chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.2,
+      });
 
-  const responseText = completion.choices[0]?.message?.content || "";
-  const cleaned = responseText.replace(/```json|```/g, "").trim();
+      const responseText = completion.choices[0]?.message?.content || "";
+      const cleaned = responseText.replace(/```json|```/g, "").trim();
 
-  try {
-    return JSON.parse(cleaned);
-  } catch (err) {
-    console.error("Failed to parse AI response as JSON:", cleaned);
-    throw new Error("AI returned invalid JSON");
+      return JSON.parse(cleaned);
+    } catch (err) {
+      const isLastAttempt = attempt === retries;
+      console.error(`AI extraction attempt ${attempt + 1} failed:`, err);
+
+      if (isLastAttempt) {
+        throw err;
+      }
+
+      const delay = 1000 * Math.pow(2, attempt);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
   }
+
+  throw new Error("AI extraction failed after all retries");
 }
