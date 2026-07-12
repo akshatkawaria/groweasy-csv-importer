@@ -1,7 +1,13 @@
 import Groq from "groq-sdk";
 import { ALLOWED_CRM_STATUS, ALLOWED_DATA_SOURCE } from "../types/crm";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "" });
+let groq: Groq;
+function getGroqClient(): Groq {
+  if (!groq) {
+    groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "" });
+  }
+  return groq;
+}
 
 const SYSTEM_PROMPT = `You are a data extraction assistant for a CRM system called GrowEasy.
 
@@ -64,7 +70,7 @@ EXAMPLE OUTPUT:
 export async function extractBatch(rows: any[]): Promise<any[]> {
   const userPrompt = `Here are the CSV rows to map:\n${JSON.stringify(rows, null, 2)}`;
 
-  const completion = await groq.chat.completions.create({
+  const completion = await getGroqClient().chat.completions.create({
     model: "llama-3.3-70b-versatile",
     messages: [
       { role: "system", content: SYSTEM_PROMPT },

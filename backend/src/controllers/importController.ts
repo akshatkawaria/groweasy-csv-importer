@@ -1,4 +1,7 @@
 import { Request, Response } from "express";
+import { chunkArray } from "../utils/batching";
+import { extractBatch } from "../services/aiExtractor";
+import { CrmRecord } from "../types/crm";
 
 export const handleImport = async (req: Request, res: Response) => {
   try {
@@ -10,15 +13,31 @@ export const handleImport = async (req: Request, res: Response) => {
       });
     }
 
-    // STUB: just echo back rows as "imported" for now, no AI yet
+    const batches = chunkArray(rows, 25);
+    const imported: CrmRecord[] = [];
+    const skipped: { reason: string; originalRow: any }[] = [];
+
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+      try {
+        const extracted = await extractBatch(batch);
+        imported.push(...extracted);
+      } catch (err) {
+        console.error(`Batch ${i + 1} failed:`, err);
+        batch.forEach((row) => {
+          skipped.push({ reason: "AI processing failed for this batch", originalRow: row });
+        });
+      }
+    }
+
     res.json({
-      imported: rows,
-      skipped: [],
-      totalImported: rows.length,
-      totalSkipped: 0,
+      imported,
+      skipped,
+      totalImported: imported.length,
+      totalSkipped: skipped.length,
     });
   } catch (err) {
     console.error("Import error:", err);
     res.status(500).json({ error: "Internal server error during import." });
   }
-};
+};  
